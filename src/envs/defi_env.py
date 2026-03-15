@@ -218,3 +218,7 @@ class DeFiLPEnv(gym.Env):
             in_range,
         ], dtype=np.float32)
         return np.clip(obs, -10.0, 10.0)
+
+
+# Alias used by training/eval scripts
+DeFiHedgingEnv = DeFiLPEnv

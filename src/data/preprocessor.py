@@ -231,6 +231,26 @@ def preprocess_all(start: str = "2018-01-01", end: str = "2024-12-31") -> pd.Dat
     master_norm.to_parquet(os.path.join(PROC_DIR, "master_features.parquet"))
     master.to_parquet(os.path.join(PROC_DIR, "master_raw.parquet"))
     log.info(f"Saved processed data → {PROC_DIR}")
+
+    # ── Build defi_processed.parquet for DeFiLPEnv ──────────────────────────
+    log.info("Building defi_processed.parquet …")
+    defi_cols = ["pool_price", "funding_rate", "basis_spread", "liquidity"]
+    # Keep only DeFi columns that are available; fill missing with defaults
+    defi_raw = defi.copy()
+    for col in defi_cols:
+        if col not in defi_raw.columns:
+            defi_raw[col] = 0.0
+    defi_raw = defi_raw[defi_cols]
+    defi_reindexed = defi_raw.resample("B").last().ffill()
+    # Normalise on training portion
+    n_defi = len(defi_reindexed)
+    train_n = int(n_defi * 0.8)
+    d_means = defi_reindexed.iloc[:train_n].mean()
+    d_stds  = defi_reindexed.iloc[:train_n].std().replace(0, 1)
+    defi_norm = (defi_reindexed - d_means) / d_stds
+    defi_norm.to_parquet(os.path.join(PROC_DIR, "defi_processed.parquet"))
+    log.info(f"Saved defi_processed.parquet → {PROC_DIR}")
+
     return master_norm
 
 

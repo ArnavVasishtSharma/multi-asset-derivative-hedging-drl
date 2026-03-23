@@ -28,18 +28,40 @@ log = logging.getLogger(__name__)
 
 def parse_args():
     p = argparse.ArgumentParser(description="Train Novelty 1 — Multi-Asset DDPG")
-    p.add_argument("--data_path",  default="data/processed/master_raw.parquet")
-    p.add_argument("--save_path",  default="checkpoints/novelty1")
-    p.add_argument("--device",     default="cpu")
-    p.add_argument("--timesteps",  type=int,   default=1_000_000)
-    p.add_argument("--episode_len",type=int,   default=60)
-    p.add_argument("--start_steps",type=int,   default=10_000,
+    p.add_argument("--config",     default=None, help="Path to YAML config file")
+    p.add_argument("--data_path",  default=None)
+    p.add_argument("--save_path",  default=None)
+    p.add_argument("--device",     default=None)
+    p.add_argument("--timesteps",  type=int,   default=None)
+    p.add_argument("--episode_len",type=int,   default=None)
+    p.add_argument("--start_steps",type=int,   default=None,
                    help="Steps of random exploration before training")
-    p.add_argument("--update_freq",type=int,   default=1)
-    p.add_argument("--batch_size", type=int,   default=256)
+    p.add_argument("--update_freq",type=int,   default=None)
+    p.add_argument("--batch_size", type=int,   default=None)
     p.add_argument("--no_wandb",   action="store_true")
-    p.add_argument("--seed",       type=int,   default=42)
-    return p.parse_args()
+    p.add_argument("--seed",       type=int,   default=None)
+    args = p.parse_args()
+
+    # Merge YAML config (if provided) with CLI args (CLI wins)
+    defaults = dict(data_path="data/processed/master_raw.parquet",
+                    save_path="checkpoints/novelty1", device="cpu",
+                    timesteps=1_000_000, episode_len=60, start_steps=10_000,
+                    update_freq=1, batch_size=256, seed=42)
+    if args.config:
+        from utils.config import load_config
+        cfg = load_config(args.config)
+        flat = {**cfg.get("data", {}), **cfg.get("training", {}),
+                **cfg.get("optimizer", {}), **cfg.get("ddpg", {}),
+                **cfg.get("output", {})}
+        defaults.update({k: v for k, v in flat.items() if v is not None})
+    # CLI overrides
+    for k, v in vars(args).items():
+        if v is not None and k != "config":
+            defaults[k] = v
+    for k, v in defaults.items():
+        if getattr(args, k, None) is None:
+            setattr(args, k, v)
+    return args
 
 
 def main():

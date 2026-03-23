@@ -109,7 +109,20 @@ python backtest.py \
     --data    ../data/processed/master_raw.parquet \
     --output_csv ../results/backtest_nov2.csv
 
+python backtest.py \
+    --model    novelty3_meta \
+    --ckpt     ../checkpoints/novelty3 \
+    --data     ../data/processed/master_raw.parquet \
+    --defi_data ../data/processed/defi_processed.parquet \
+    --output_csv ../results/backtest_nov3.csv
+
+# ── Step 9: Visualize results ────────────────────────────────
+echo ""
+echo "=== Step 9: Generating result visualizations ==="
+python visualize.py --results_dir ../results --output_dir ../results/plots
+
 echo ""
 echo "============================================================"
 echo " Pipeline complete! Results in: $PROJECT_ROOT/results/"
+echo " Plots in: $PROJECT_ROOT/results/plots/"
 echo "============================================================"

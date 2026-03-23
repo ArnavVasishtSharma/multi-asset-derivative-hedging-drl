@@ -1,0 +1,41 @@
+# ============================================================
+# Novelty 3 — Hybrid TradFi-DeFi Meta-Policy
+# ============================================================
+
+model:
+  name: novelty3_meta
+
+training:
+  timesteps: 300_000
+  meta_update_freq: 256          # meta-critic update interval
+  batch_size: 256
+  seed: 42
+
+optimizer:
+  lr_meta: 3.0e-4
+
+meta_policy:
+  gamma: 0.99
+  tau_meta: 0.005                # soft update for target meta-critic
+  delta_neutral_penalty: 0.1     # λ for |ΣΔ| ≈ 0 constraint
+
+regime_detector:
+  seq_len: 20
+  input_dim: 4
+  hidden_dim: 64
+  warmup_epochs: 30
+
+defi_policy:
+  obs_dim: 14
+  action_dim: 3
+
+data:
+  tradfi_data: data/processed/master_raw.parquet
+  defi_data: data/processed/defi_processed.parquet
+
+output:
+  save_path: checkpoints/novelty3
+  tradfi_ckpt: checkpoints/novelty1   # pretrained TradFi DDPG
+  wandb_project: hedge-derivation
+  wandb_run: novelty3-meta
+  no_wandb: false

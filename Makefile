@@ -10,10 +10,10 @@ DATA   := data/processed
 CKPTS  := checkpoints
 
 .PHONY: all install data preprocess train-nov1 train-nov2 train-nov3 \
-        train-all eval-all backtest quick-start clean
+        train-all eval-all backtest visualize test quick-start clean
 
 # ── Default: full pipeline ───────────────────────────────────
-all: install data preprocess train-all eval-all
+all: install data preprocess train-all eval-all backtest visualize
 
 # ── Install dependencies ─────────────────────────────────────
 install:
@@ -30,18 +30,21 @@ preprocess:
 # ── Train individual novelties ────────────────────────────────
 train-nov1:
 	cd $(SRC) && python train_novelty1.py \
+		--config ../configs/novelty1.yaml \
 		--data_path ../$(DATA)/master_raw.parquet \
 		--save_path ../$(CKPTS)/novelty1 \
 		--device cpu --timesteps 1000000 --no_wandb
 
 train-nov2:
 	cd $(SRC) && python train_novelty2.py \
+		--config ../configs/novelty2.yaml \
 		--data_path ../$(DATA)/master_raw.parquet \
 		--save_path ../$(CKPTS)/novelty2 \
 		--device cpu --timesteps 500000 --no_wandb
 
 train-nov3:
 	cd $(SRC) && python train_novelty3.py \
+		--config ../configs/novelty3.yaml \
 		--tradfi_data ../$(DATA)/master_raw.parquet \
 		--defi_data   ../$(DATA)/defi_processed.parquet \
 		--tradfi_ckpt ../$(CKPTS)/novelty1 \
@@ -53,6 +56,10 @@ train-all: train-nov1 train-nov2 train-nov3
 # ── Quick sanity: data + imports only ────────────────────────
 quick-start:
 	cd $(SRC) && bash quick_start.sh
+
+# ── Run test suite ───────────────────────────────────────────
+test:
+	cd $(SRC) && python -m pytest ../tests/ -v --tb=short
 
 # ── Evaluate all models ───────────────────────────────────────
 eval-all:
@@ -88,6 +95,18 @@ backtest:
 		--ckpt ../$(CKPTS)/novelty2 \
 		--data ../$(DATA)/master_raw.parquet \
 		--output_csv ../results/backtest_nov2.csv
+	cd $(SRC) && python backtest.py --model novelty3_meta \
+		--ckpt ../$(CKPTS)/novelty3 \
+		--data ../$(DATA)/master_raw.parquet \
+		--defi_data ../$(DATA)/defi_processed.parquet \
+		--output_csv ../results/backtest_nov3.csv
+
+# ── Visualize results ────────────────────────────────────────
+visualize:
+	mkdir -p results/plots
+	cd $(SRC) && python visualize.py \
+		--results_dir ../results \
+		--output_dir ../results/plots
 
 # ── Clean checkpoints and results ────────────────────────────
 clean:

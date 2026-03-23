@@ -1,0 +1,37 @@
+# ============================================================
+# Novelty 1 — Correlation-Aware Multi-Asset DDPG
+# ============================================================
+
+model:
+  name: novelty1_ddpg
+  obs_dim: 49
+  action_dim: 3
+  hidden_dim: 512
+
+training:
+  timesteps: 1_000_000
+  episode_len: 60
+  start_steps: 10_000          # random exploration before training
+  update_freq: 1
+  batch_size: 256
+  seed: 42
+
+optimizer:
+  lr_actor: 1.0e-4
+  lr_critic: 3.0e-4
+
+ddpg:
+  gamma: 0.99
+  tau: 0.005                    # soft target update coefficient
+  buffer_size: 200_000
+  noise_sigma: 0.1              # OU noise std
+
+data:
+  data_path: data/processed/master_raw.parquet
+  option_type: put
+
+output:
+  save_path: checkpoints/novelty1
+  wandb_project: hedge-derivation
+  wandb_run: novelty1-ddpg
+  no_wandb: false

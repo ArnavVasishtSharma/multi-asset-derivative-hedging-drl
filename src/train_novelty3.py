@@ -36,18 +36,40 @@ log = logging.getLogger(__name__)
 
 def parse_args():
     p = argparse.ArgumentParser(description="Train Novelty 3 — Hybrid TradFi-DeFi Meta-Policy")
-    p.add_argument("--tradfi_data",   default="data/processed/master_raw.parquet")
-    p.add_argument("--defi_data",     default="data/processed/defi_processed.parquet")
+    p.add_argument("--config",        default=None, help="Path to YAML config file")
+    p.add_argument("--tradfi_data",   default=None)
+    p.add_argument("--defi_data",     default=None)
     p.add_argument("--tradfi_ckpt",   default=None,   help="Path to Novelty 1 DDPG checkpoint")
-    p.add_argument("--save_path",     default="checkpoints/novelty3")
-    p.add_argument("--device",        default="cpu")
-    p.add_argument("--timesteps",     type=int,   default=300_000)
-    p.add_argument("--meta_update_freq", type=int, default=256)
-    p.add_argument("--lr_meta",       type=float, default=3e-4)
-    p.add_argument("--batch_size",    type=int,   default=256)
+    p.add_argument("--save_path",     default=None)
+    p.add_argument("--device",        default=None)
+    p.add_argument("--timesteps",     type=int,   default=None)
+    p.add_argument("--meta_update_freq", type=int, default=None)
+    p.add_argument("--lr_meta",       type=float, default=None)
+    p.add_argument("--batch_size",    type=int,   default=None)
     p.add_argument("--no_wandb",      action="store_true")
-    p.add_argument("--seed",          type=int,   default=42)
-    return p.parse_args()
+    p.add_argument("--seed",          type=int,   default=None)
+    args = p.parse_args()
+
+    # Merge YAML config (if provided) with CLI args (CLI wins)
+    defaults = dict(tradfi_data="data/processed/master_raw.parquet",
+                    defi_data="data/processed/defi_processed.parquet",
+                    save_path="checkpoints/novelty3", device="cpu",
+                    timesteps=300_000, meta_update_freq=256,
+                    lr_meta=3e-4, batch_size=256, seed=42)
+    if args.config:
+        from utils.config import load_config
+        cfg = load_config(args.config)
+        flat = {**cfg.get("data", {}), **cfg.get("training", {}),
+                **cfg.get("optimizer", {}), **cfg.get("meta_policy", {}),
+                **cfg.get("output", {})}
+        defaults.update({k: v for k, v in flat.items() if v is not None})
+    for k, v in vars(args).items():
+        if v is not None and k != "config":
+            defaults[k] = v
+    for k, v in defaults.items():
+        if getattr(args, k, None) is None:
+            setattr(args, k, v)
+    return args
 
 
 def _make_regime_label(date_idx: int, total: int) -> int:

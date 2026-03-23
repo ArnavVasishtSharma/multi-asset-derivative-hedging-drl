@@ -32,22 +32,44 @@ log = logging.getLogger(__name__)
 
 def parse_args():
     p = argparse.ArgumentParser(description="Train Novelty 2 — IV-Surface BC-RPPO")
-    p.add_argument("--data_path",     default="data/processed/master_raw.parquet")
-    p.add_argument("--save_path",     default="checkpoints/novelty2")
-    p.add_argument("--device",        default="cpu")
-    p.add_argument("--timesteps",     type=int,   default=500_000)
-    p.add_argument("--rollout_len",   type=int,   default=2048,
+    p.add_argument("--config",        default=None, help="Path to YAML config file")
+    p.add_argument("--data_path",     default=None)
+    p.add_argument("--save_path",     default=None)
+    p.add_argument("--device",        default=None)
+    p.add_argument("--timesteps",     type=int,   default=None)
+    p.add_argument("--rollout_len",   type=int,   default=None,
                    help="Steps collected per PPO update")
-    p.add_argument("--n_epochs",      type=int,   default=10)
-    p.add_argument("--batch_size",    type=int,   default=256)
-    p.add_argument("--lr",            type=float, default=3e-4)
-    p.add_argument("--bc_epochs",     type=int,   default=100,
+    p.add_argument("--n_epochs",      type=int,   default=None)
+    p.add_argument("--batch_size",    type=int,   default=None)
+    p.add_argument("--lr",            type=float, default=None)
+    p.add_argument("--bc_epochs",     type=int,   default=None,
                    help="Behavior cloning pretraining epochs")
-    p.add_argument("--transformer_epochs", type=int, default=50)
-    p.add_argument("--iv_seq_len",    type=int,   default=30)
+    p.add_argument("--transformer_epochs", type=int, default=None)
+    p.add_argument("--iv_seq_len",    type=int,   default=None)
     p.add_argument("--no_wandb",      action="store_true")
-    p.add_argument("--seed",          type=int,   default=42)
-    return p.parse_args()
+    p.add_argument("--seed",          type=int,   default=None)
+    args = p.parse_args()
+
+    # Merge YAML config (if provided) with CLI args (CLI wins)
+    defaults = dict(data_path="data/processed/master_raw.parquet",
+                    save_path="checkpoints/novelty2", device="cpu",
+                    timesteps=500_000, rollout_len=2048, n_epochs=10,
+                    batch_size=256, lr=3e-4, bc_epochs=100,
+                    transformer_epochs=50, iv_seq_len=30, seed=42)
+    if args.config:
+        from utils.config import load_config
+        cfg = load_config(args.config)
+        flat = {**cfg.get("data", {}), **cfg.get("training", {}),
+                **cfg.get("optimizer", {}), **cfg.get("rppo", {}),
+                **cfg.get("pretraining", {}), **cfg.get("output", {})}
+        defaults.update({k: v for k, v in flat.items() if v is not None})
+    for k, v in vars(args).items():
+        if v is not None and k != "config":
+            defaults[k] = v
+    for k, v in defaults.items():
+        if getattr(args, k, None) is None:
+            setattr(args, k, v)
+    return args
 
 
 def make_iv_sequences(env_data: np.ndarray, seq_len: int = 30) -> np.ndarray:

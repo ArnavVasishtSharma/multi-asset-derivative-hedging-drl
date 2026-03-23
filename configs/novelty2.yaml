@@ -1,0 +1,45 @@
+# ============================================================
+# Novelty 2 — IV-Surface Aware BC-RPPO
+# ============================================================
+
+model:
+  name: novelty2_bcrppo
+  obs_dim: 49
+  iv_dim: 25
+  iv_seq_len: 30
+  action_dim: 1
+  hidden_dim: 256
+
+training:
+  timesteps: 500_000
+  rollout_len: 2048
+  n_epochs: 10                  # PPO epochs per update
+  batch_size: 256
+  seed: 42
+
+optimizer:
+  lr: 3.0e-4
+
+rppo:
+  gamma: 0.99
+  lam: 0.95                     # GAE lambda
+  clip_eps: 0.2                  # PPO clip parameter
+  c_ent: 0.01                   # entropy bonus coefficient
+  c_kl: 0.01                    # KL penalty coefficient (RPPO)
+  c_vf: 0.5                     # value loss coefficient
+  no_trade_eps: 0.02             # no-trade zone threshold
+
+pretraining:
+  bc_epochs: 100                 # behavior cloning epochs
+  transformer_epochs: 50         # IV transformer SSL epochs
+
+data:
+  data_path: data/processed/master_raw.parquet
+  option_type: put
+  episode_len: 60
+
+output:
+  save_path: checkpoints/novelty2
+  wandb_project: hedge-derivation
+  wandb_run: novelty2-bcrppo
+  no_wandb: false
